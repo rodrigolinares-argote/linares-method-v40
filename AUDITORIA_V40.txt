@@ -1,0 +1,46 @@
+LINARES METHOD V4.0 — PORTAL POR URL HTTPS
+
+ARQUITECTURA:
+- Compartir Portal publica un paquete cifrado en Netlify Blobs.
+- El servidor nunca recibe la clave de cifrado; la clave queda en el fragmento #k= del enlace.
+- Cada alumno conserva una URL estable. Las actualizaciones reemplazan el contenido sin reinstalar.
+- El Portal instalado conserva una copia local en IndexedDB para uso offline después de la primera carga.
+- El HTML descargable anterior se conserva únicamente como respaldo.
+
+AUDITORÍA:
+- JS principal válido: True
+- JS Portal URL válido: True
+- Funciones Netlify sintácticamente válidas: True
+- Service worker válido: True
+- Compartir usa URL y no archivo: True
+- Exportar/descargar HTML preservado como respaldo: True
+- Cifrado AES-GCM presente: True
+- Clave no se envía al servidor: True
+- URL estable por alumno: True
+- Actualización reutiliza mismo acceso: True
+- Portal cachea copia offline: True
+- Manifest único por alumno: True
+- Ruta /p/* configurada: True
+- Blobs troceados: True
+- Pago/renovación V3.9 preservados: True
+- Mercado Pago preservado: True
+- WhatsApp comprobante preservado: True
+- Prueba cifrar/comprimir/descifrar: True
+- Iconos any desde fuente original: True
+- Iconos maskable separados: True
+- Portal iconos any/maskable separados: True
+- Estructura proyecto completa: True
+- Errores JS principal: []
+- Errores JS portal: []
+- Errores funciones: []
+- Error SW: 
+- Faltantes: []
+- Crypto roundtrip: passed
+- SHA256 public/index.html: bef8fefe3337b35566b618659ae71a9f7ffb1709a3f83217061f81a589e97044
+
+AUDITORÍA FINAL DE ICONOS Y PAQUETE:
+- Iconos reconstruidos una sola vez desde el arte promocional original: True
+- Iconos ANY 90% y MASKABLE 74% separados: True
+- @netlify/blobs usa dist-tag latest: True
+- Errores sintácticos finales: []
+- SHA256 final index: bef8fefe3337b35566b618659ae71a9f7ffb1709a3f83217061f81a589e97044
