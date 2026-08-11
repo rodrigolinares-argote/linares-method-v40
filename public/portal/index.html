@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090711">
+<title>Mi Linares Method</title>
+<link rel="icon" href="/portal/icon-192.png">
+<style>
+:root{color-scheme:dark;--bg:#07060d;--panel:#11101b;--border:#2b2141;--txt:#f7f5ff;--muted:#9b96ad;--violet:#8b2cf5}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--txt)}
+body{overflow:hidden}.shell{width:100%;height:100dvh;display:flex;flex-direction:column;background:var(--bg)}
+.top{height:58px;display:flex;align-items:center;justify-content:space-between;padding:8px 13px;border-bottom:1px solid var(--border);background:#090711;flex:none}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}.brand img{width:36px;height:36px;border-radius:9px}.brand strong{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.actions{display:flex;gap:7px}.btn{border:1px solid #4c2a73;background:#1a1027;color:#dec5ff;border-radius:10px;padding:8px 10px;font-weight:750;font-size:11px}
+.btn.primary{background:linear-gradient(135deg,#7c2cf2,#a12ff0);color:white;border-color:transparent}
+#viewer{width:100%;height:100%;border:0;display:none;flex:1;background:var(--bg)}
+#state{flex:1;display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto}
+.card{width:min(460px,100%);background:linear-gradient(180deg,#151224,#0d0b16);border:1px solid #37214f;border-radius:22px;padding:26px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.35)}
+.logo{width:104px;height:104px;border-radius:22px;margin:auto auto 18px;display:block}.card h1{font-size:27px;margin:0 0 8px}.card p{color:var(--muted);font-size:13px;line-height:1.55;margin:0 0 18px}
+.status{border:1px solid #30243f;border-radius:14px;padding:12px;font-size:12px;color:#c7bfd7;background:#0b0913;text-align:left;line-height:1.5}
+.error{border-color:#5b2030;color:#ff9aaa}.spinner{width:30px;height:30px;border:3px solid #332448;border-top-color:#9d4cff;border-radius:50%;margin:0 auto 14px;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.help{display:none;margin-top:14px;text-align:left;border:1px solid #493064;border-radius:14px;padding:13px;color:#d8c5ec;font-size:12px;line-height:1.55}
+@media(min-width:700px){.shell{max-width:480px;margin:auto;border-left:1px solid var(--border);border-right:1px solid var(--border)}}
+</style>
+<script>
+(function(){
+  const id = location.pathname.split('/').filter(Boolean).pop() || '';
+  if(id){
+    const link=document.createElement('link');
+    link.rel='manifest';
+    link.href='/.netlify/functions/portal-manifest?id='+encodeURIComponent(id);
+    document.head.appendChild(link);
+  }
+})();
+</script>
+</head>
+<body>
+<div class="shell">
+  <header class="top" id="top" style="display:none">
+    <div class="brand"><img src="/portal/icon-192.png" alt=""><strong>Mi Linares Method</strong></div>
+    <div class="actions"><button class="btn" id="refresh" type="button">Actualizar</button><button class="btn primary" id="install" type="button">Agregar a inicio</button></div>
+  </header>
+  <main id="state">
+    <div class="card">
+      <img class="logo" src="/portal/icon-512.png" alt="Portal Alumno">
+      <div class="spinner" id="spinner"></div>
+      <h1>Mi Linares Method</h1>
+      <p id="message">Abriendo tu Portal…</p>
+      <div class="status" id="status">Validando acceso seguro.</div>
+      <div class="help" id="help">En Chrome, abrí el menú <strong>⋮</strong> y elegí <strong>Agregar a pantalla principal</strong> o <strong>Instalar aplicación</strong>. Después confirmá <strong>Agregar</strong>.</div>
+    </div>
+  </main>
+  <iframe id="viewer" title="Mi Linares Method"></iframe>
+</div>
+<script>
+const DB='lm-portal-url-v40', STORE='portals';
+let deferredPrompt=null, portalId='', keyText='', currentBlobUrl='';
+
+function b64Bytes(txt){
+  let s=String(txt||'').replace(/-/g,'+').replace(/_/g,'/');
+  while(s.length%4)s+='=';
+  const bin=atob(s), out=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i);
+  return out;
+}
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore(STORE);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+async function idbGet(k){const db=await openDB();return new Promise((res,rej)=>{const tx=db.transaction(STORE,'readonly'),r=tx.objectStore(STORE).get(k);r.onsuccess=()=>res(r.result||null);r.onerror=()=>rej(r.error)})}
+async function idbSet(k,v){const db=await openDB();return new Promise((res,rej)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(v,k);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}
+function setStatus(msg,err=false){document.getElementById('status').textContent=msg;document.getElementById('status').classList.toggle('error',!!err)}
+async function gunzip(bytes){
+  if(typeof DecompressionStream!=='function') throw new Error('Este navegador no puede descomprimir el Portal.');
+  const ds=new DecompressionStream('gzip'), w=ds.writable.getWriter(); await w.write(bytes); await w.close();
+  return new Uint8Array(await new Response(ds.readable).arrayBuffer());
+}
+async function decryptPayload(meta,chunks,keyB64){
+  const totalLen=chunks.reduce((n,c)=>n+c.length,0), all=new Uint8Array(totalLen);let off=0;
+  for(const c of chunks){all.set(c,off);off+=c.length}
+  const key=await crypto.subtle.importKey('raw',b64Bytes(keyB64),'AES-GCM',false,['decrypt']);
+  const plain=new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:b64Bytes(meta.iv)},key,all));
+  const bytes=meta.encoding==='gzip'?await gunzip(plain):plain;
+  return new TextDecoder().decode(bytes);
+}
+async function fetchPortal(){
+  const metaResp=await fetch('/.netlify/functions/portal-get?id='+encodeURIComponent(portalId)+'&meta=1',{cache:'no-store'});
+  if(!metaResp.ok) throw new Error('Este Portal todavía no está publicado.');
+  const meta=await metaResp.json();
+  const chunks=[];
+  for(let i=0;i<meta.total;i++){
+    const r=await fetch('/.netlify/functions/portal-get?id='+encodeURIComponent(portalId)+'&part='+i,{cache:'no-store'});
+    if(!r.ok) throw new Error('No se pudo descargar una parte del Portal.');
+    chunks.push(new Uint8Array(await r.arrayBuffer()));
+  }
+  const html=await decryptPayload(meta,chunks,keyText);
+  await idbSet('portal:'+portalId,{html,updatedAt:meta.updatedAt||'',key:keyText,name:meta.studentName||''});
+  return html;
+}
+function showPortal(html){
+  if(currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+  currentBlobUrl=URL.createObjectURL(new Blob([html],{type:'text/html'}));
+  const frame=document.getElementById('viewer');
+  frame.src=currentBlobUrl; frame.style.display='block';
+  document.getElementById('state').style.display='none';
+  document.getElementById('top').style.display='flex';
+}
+async function load(force=false){
+  document.getElementById('spinner').style.display='block';
+  setStatus(force?'Buscando la última actualización…':'Cargando tu Portal…');
+  let cached=await idbGet('portal:'+portalId);
+  if(!keyText && cached?.key) keyText=cached.key;
+  if(!keyText) throw new Error('Falta la clave del Portal. Abrí nuevamente el enlace original que te envió Rodrigo.');
+  try{
+    const html=await fetchPortal(); showPortal(html);
+  }catch(e){
+    if(cached?.html){showPortal(cached.html);return}
+    throw e;
+  }
+}
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e});
+window.addEventListener('appinstalled',()=>{deferredPrompt=null});
+document.getElementById('install').addEventListener('click',async()=>{
+  if(deferredPrompt){deferredPrompt.prompt();try{await deferredPrompt.userChoice}catch(_){}deferredPrompt=null;return}
+  document.getElementById('viewer').style.display='none';
+  document.getElementById('top').style.display='none';
+  document.getElementById('state').style.display='flex';
+  document.getElementById('spinner').style.display='none';
+  document.getElementById('message').textContent='Agregar este Portal a la pantalla principal';
+  setStatus('Chrome no mostró la ventana automática. Usá la opción del menú del navegador.');
+  document.getElementById('help').style.display='block';
+});
+document.getElementById('refresh').addEventListener('click',()=>load(true).catch(e=>{setStatus(e.message,true)}));
+
+(async()=>{
+  portalId=location.pathname.split('/').filter(Boolean).pop()||'';
+  const params=new URLSearchParams(location.hash.replace(/^#/,''));
+  keyText=params.get('k')||'';
+  if(keyText){await idbSet('key:'+portalId,keyText);history.replaceState(null,'',location.pathname)}
+  else keyText=await idbGet('key:'+portalId)||'';
+  if('serviceWorker' in navigator){try{await navigator.serviceWorker.register('/portal-sw.js',{scope:'/p/'});await navigator.serviceWorker.ready}catch(_){}}
+  if(!portalId){throw new Error('Enlace de Portal inválido.')}
+  await load();
+})().catch(e=>{
+  document.getElementById('spinner').style.display='none';
+  document.getElementById('message').textContent='No se pudo abrir el Portal';
+  setStatus(e.message||'Error inesperado.',true);
+});
+</script>
+</body>
+</html>
