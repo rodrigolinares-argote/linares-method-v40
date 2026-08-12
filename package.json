@@ -1,0 +1,9 @@
+{
+  "name": "linares-method-v40",
+  "private": true,
+  "version": "4.0.10",
+  "type": "module",
+  "dependencies": {
+    "@netlify/blobs": "10.7.10"
+  }
+}
